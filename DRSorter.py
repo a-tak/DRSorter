@@ -123,60 +123,62 @@ def apply_grade_from_drx_using_graph(item, drx_file_path, grade_mode):
         logging.error(f"DRX適用中にエラー発生: {str(e)}")
         return False
 
-def get_metadata_from_jpeg(media_item) -> Dict[str, Optional[str]]:
-    """JPEGファイルからメタデータを取得"""
-    try:
-        camera_type = media_item.GetMetadata("Camera TC Type")
-        lens_type = media_item.GetMetadata("Lens Type")
-        # デバッグ情報を追加
-        logging.info(f"メタデータ取得: Camera TC Type = {camera_type}, Lens Type = {lens_type}")
-        if not camera_type:
-            logging.warning("Camera TC Typeが取得できませんでした")
-        return {
-            "camera_type": camera_type,
-            "lens_type": lens_type
-        }
-    except Exception as e:
-        logging.error(f"メタデータの取得に失敗: {str(e)}")
-        return {"camera_type": None, "lens_type": None}
+class MediaItemCache:
+    """メディアアイテムとメタデータのキャッシュを管理するクラス"""
+    def __init__(self, media_items):
+        self.metadata_cache = {}  # ベース名をキーとしたメタデータのキャッシュ
+        self.dng_cache = {}      # ベース名をキーとしたDNGアイテムのキャッシュ
+        self.jpeg_cache = {}     # ベース名をキーとしたJPEGアイテムのキャッシュ
+        self._build_cache(media_items)
 
-def get_media_item_by_basename_and_dng(media_item, media_items):
-    """同じベース名で拡張子がDNGのmediaItemを取得し、メタデータも返す"""
-    try:
-        # ベース名を取得
-        base_name = os.path.splitext(media_item.GetClipProperty("Clip Name"))[0]
-        
-        # DNGファイルを検索
-        dng_item = None
-        jpeg_item = None
-        
-        # メディアアイテムを分類
-        if media_item.GetClipProperty("Format") == "JPEG":
-            jpeg_item = media_item
-        elif media_item.GetClipProperty("Format").lower() == "dng":
-            dng_item = media_item
-            
-        # 対応するファイルを検索
+    def _build_cache(self, media_items):
+        """メディアアイテムのキャッシュを構築"""
         for item in media_items:
-            item_name = item.GetClipProperty("Clip Name")
-            item_base = os.path.splitext(item_name)[0]
+            base_name = os.path.splitext(item.GetClipProperty("Clip Name"))[0]
+            format_type = item.GetClipProperty("Format")
             
-            if item_base == base_name:
-                if item.GetClipProperty("Format") == "JPEG":
-                    jpeg_item = item
-                elif item.GetClipProperty("Format").lower() == "dng":
-                    dng_item = item
-        
-        # メタデータを取得（常にJPEGから）
-        metadata = get_metadata_from_jpeg(jpeg_item) if jpeg_item else {
-            "camera_type": None,
-            "lens_type": None
-        }
-        
+            if format_type == "JPEG":
+                self.jpeg_cache[base_name] = item
+                # JPEGファイルからメタデータを取得してキャッシュ
+                try:
+                    camera_type = item.GetMetadata("Camera TC Type")
+                    lens_type = item.GetMetadata("Lens Type")
+                    
+                    # メタデータが取得できない場合はデフォルト値を使用
+                    if not camera_type:
+                        camera_type = "default"
+                        logging.info(f"Camera TC Typeが取得できないためデフォルト使用: {base_name}")
+                    if not lens_type:
+                        lens_type = "default"
+                        logging.info(f"Lens Typeが取得できないためデフォルト使用: {base_name}")
+                        
+                    self.metadata_cache[base_name] = {
+                        "camera_type": camera_type,
+                        "lens_type": lens_type
+                    }
+                    logging.info(f"メタデータをキャッシュ: {base_name} - Camera: {camera_type}, Lens: {lens_type}")
+                    
+                except Exception as e:
+                    logging.error(f"メタデータの取得に失敗: {base_name}, エラー: {str(e)}")
+                    # エラー時もデフォルト値を設定
+                    self.metadata_cache[base_name] = {
+                        "camera_type": "default",
+                        "lens_type": "default"
+                    }
+            
+            elif format_type.lower() == "dng":
+                self.dng_cache[base_name] = item
+
+    def get_metadata(self, base_name: str) -> Dict[str, Optional[str]]:
+        """キャッシュからメタデータを取得"""
+        return self.metadata_cache.get(base_name, {"camera_type": None, "lens_type": None})
+
+    def get_dng_and_metadata(self, media_item) -> tuple:
+        """メディアアイテムに対応するDNGアイテムとメタデータを取得"""
+        base_name = os.path.splitext(media_item.GetClipProperty("Clip Name"))[0]
+        dng_item = self.dng_cache.get(base_name)
+        metadata = self.get_metadata(base_name)
         return dng_item, metadata
-    except Exception as e:
-        logging.error(f"DNGファイル検索中にエラー発生: {str(e)}")
-        return None, {"camera_type": None, "lens_type": None}
 
 def set_timeline_resolution(timeline, width, height):
     """タイムラインの解像度を設定する"""
@@ -215,6 +217,9 @@ def main():
             logging.warning("メディアアイテムが見つかりません")
             return
 
+        # メディアアイテムのキャッシュを初期化
+        media_cache = MediaItemCache(media_items)
+        
         # 解像度でグループ化
         resolution_groups = {}
         for media_item in media_items:
@@ -228,8 +233,8 @@ def main():
                             resolution_groups[resolution] = []
                         resolution_groups[resolution].append(media_item)
                         
-                        # 対応するDNGファイルを検索して同じ解像度グループに追加
-                        dng_item, _ = get_media_item_by_basename_and_dng(media_item, media_items)
+                        # キャッシュから対応するDNGファイルを取得
+                        dng_item, _ = media_cache.get_dng_and_metadata(media_item)
                         if dng_item and dng_item not in resolution_groups[resolution]:
                             resolution_groups[resolution].append(dng_item)
                                     
@@ -269,10 +274,19 @@ def main():
                 for item in timeline_items:
                     media_pool_item = item.GetMediaPoolItem()
                     if media_pool_item.GetClipProperty("Format") == "DNG":
-                        _, metadata = get_media_item_by_basename_and_dng(media_pool_item, media_items)
-                        logging.info(f"DNGファイル {media_pool_item.GetClipProperty('Clip Name')} のメタデータ: {metadata}")
+                        _, metadata = media_cache.get_dng_and_metadata(media_pool_item)
+                        clip_name = media_pool_item.GetClipProperty("Clip Name")
+                        logging.info(f"DNGファイル {clip_name} のメタデータ処理開始")
                         
                         power_grade_path = config.get_power_grade_path(metadata["camera_type"])
+                        if power_grade_path:
+                            if os.path.exists(power_grade_path):
+                                logging.info(f"PowerGrade適用開始: {clip_name} -> {power_grade_path}")
+                                if not apply_grade_from_drx_using_graph(item, power_grade_path, 0):
+                                    logging.error(f"PowerGrade適用失敗: {clip_name}")
+                            else:
+                                logging.error(f"PowerGradeファイルが存在しません: {power_grade_path}")
+                        
                         distortion = config.get_distortion(metadata["lens_type"])
                         
                         # 縦横判定して適切なスケールを設定

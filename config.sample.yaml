@@ -1,0 +1,25 @@
+# DRSorterのサンプル設定ファイル
+
+# 共通設定
+common:
+  still_type: "スチル"  # メディアプールでの画像タイプ名。英語環境の場合は"Still"等に変更
+  rotation_angle: 90.0  # 縦写真の回転角度
+
+# デフォルト設定
+default:
+  power_grade: "D:/DaVinci Resolve/PowerGrade/Default.drx"  # デフォルトのPowerGrade
+  distortion: 0  # デフォルトのレンズ補正値
+  portrait_scale: 1.334  # 縦向き写真用のスケール調整値
+  landscape_scale: 1.0  # 横向き写真用のスケール調整値
+
+# カメラ機種別のPowerGrade設定
+cameras:
+  "DC-GH7":  # カメラモデル名（Camera TC Type）
+    power_grade: "D:/DaVinci Resolve/PowerGrade/GH7 Normalize.drx"
+
+# レンズ別のDistortion設定
+lenses:
+  "OLYMPUS M.17mm F1.8":  # レンズ名（Lens Type）
+    distortion: 0.13  # レンズ補正値
+    portrait_scale: 1.374  # 縦向き写真用のスケール調整値
+    landscape_scale: 1.0  # 横向き写真用のスケール調整値

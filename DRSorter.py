@@ -66,19 +66,20 @@ class Config:
             return self.config['lenses'][lens_type].get('distortion', 0)
         return self.config.get('default', {}).get('distortion', 0)
 
-    def get_portrait_scale(self, lens_type: Optional[str]) -> float:
-        """レンズタイプに応じた縦向き写真用のスケール値を取得"""
-        if lens_type and lens_type in self.config.get('lenses', {}):
-            return self.config['lenses'][lens_type].get('portrait_scale', 
-                self.config.get('default', {}).get('portrait_scale', 1.334))
-        return self.config.get('default', {}).get('portrait_scale', 1.334)
-
-    def get_landscape_scale(self, lens_type: Optional[str]) -> float:
-        """レンズタイプに応じた横向き写真用のスケール値を取得"""
-        if lens_type and lens_type in self.config.get('lenses', {}):
-            return self.config['lenses'][lens_type].get('landscape_scale', 
-                self.config.get('default', {}).get('landscape_scale', 1.0))
-        return self.config.get('default', {}).get('landscape_scale', 1.0)
+    def get_aspect_ratio_scale(self, width: int, height: int) -> float:
+        """解像度からアスペクト比を判定し、適切なportrait_scaleを返す"""
+        # 大きい方の値を分子、小さい方の値を分母にしてアスペクト比を計算
+        max_side = max(width, height)
+        min_side = min(width, height)
+        aspect_ratio = max_side / min_side
+        
+        if 1.45 <= aspect_ratio <= 1.55:  # 3:2 (1.5) の近似値
+            return self.config.get('aspect_ratios', {}).get('3:2', {}).get('portrait_scale', 1.51)
+        elif 1.3 <= aspect_ratio <= 1.4:  # 4:3 (1.333...) の近似値
+            return self.config.get('aspect_ratios', {}).get('4:3', {}).get('portrait_scale', 1.374)
+        else:
+            # デフォルト値を返す（4:3として扱う）
+            return 1.374
 
     def get_still_type(self) -> str:
         """共通設定からスチルタイプを取得"""
@@ -292,9 +293,9 @@ def main():
                         # 縦横判定して適切なスケールを設定
                         width, height = map(int, resolution.split('x'))
                         if width > height:
-                            scale = config.get_landscape_scale(metadata["lens_type"])
+                            scale = 1.0  # 横向きは常に1.0
                         else:
-                            scale = config.get_portrait_scale(metadata["lens_type"])
+                            scale = config.get_aspect_ratio_scale(width, height)
                             item.SetProperty("RotationAngle", config.get_rotation_angle())
                         
                         item.SetProperty("ZoomX", scale)

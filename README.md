@@ -26,8 +26,21 @@ Pythonファイルを所定の場所に置いてください。
 
 - `power_grade`: デフォルトで適用するパワーグレード（DRX形式）のパスを指定します。DRXファイルはスチルの書き出しの形式をdrxにして書き出すことで作成できます。
 - `distortion`: デフォルトのレンズ補正値を指定します。
-- `portrait_scale`: 縦向き写真用のスケール調整値です。
-- `landscape_scale`: 横向き写真用のスケール調整値です。
+
+### アスペクト比別設定（aspect_ratios）
+
+写真のアスペクト比に応じて異なるスケール調整値を設定できます。
+
+例：
+```yaml
+aspect_ratios:
+  "4:3":
+    portrait_scale: 1.374  # 4:3の縦写真用スケール値
+  "3:2":
+    portrait_scale: 1.51   # 3:2の縦写真用スケール値
+```
+
+横写真の場合は常にスケール値1.0が適用されます。
 
 ### カメラ機種別設定（cameras）
 
@@ -44,19 +57,15 @@ cameras:
 
 ### レンズ別設定（lenses）
 
-レンズごとに異なるDistortion値とスケール調整値を設定できます。レンズ名はDaVinci Resolveのレンズの種類(Lens Type)の値を使用します。
+レンズごとに異なるDistortion値を設定できます。レンズ名はDaVinci Resolveのレンズの種類(Lens Type)の値を使用します。
 
-確認方法は前項[カメラ機種別設定](#カメラ機種別設定cameras) と同じです
-
-スケールは本来はアスペクト比などによって倍率変わりそうですが、一旦レンズ毎の補正情報として設定するようにしています。
+確認方法は前項[カメラ機種別設定](#カメラ機種別設定cameras) と同じです。
 
 例：
 ```yaml
 lenses:
   "OLYMPUS M.17mm F1.8":
     distortion: 0.13
-    portrait_scale: 1.374
-    landscape_scale: 1.0
 ```
 
 ## 実行方法

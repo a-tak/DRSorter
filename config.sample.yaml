@@ -9,8 +9,13 @@ common:
 default:
   power_grade: "D:/DaVinci Resolve/PowerGrade/Default.drx"  # デフォルトのPowerGrade
   distortion: 0  # デフォルトのレンズ補正値
-  portrait_scale: 1.334  # 縦向き写真用のスケール調整値
-  landscape_scale: 1.0  # 横向き写真用のスケール調整値
+
+# アスペクト比別のportrait_scale設定
+aspect_ratios:
+  "4:3":
+    portrait_scale: 1.374  # 4:3の縦写真用スケール値
+  "3:2":
+    portrait_scale: 1.51   # 3:2の縦写真用スケール値
 
 # カメラ機種別のPowerGrade設定
 cameras:
@@ -21,5 +26,3 @@ cameras:
 lenses:
   "OLYMPUS M.17mm F1.8":  # レンズ名（Lens Type）
     distortion: 0.13  # レンズ補正値
-    portrait_scale: 1.374  # 縦向き写真用のスケール調整値
-    landscape_scale: 1.0  # 横向き写真用のスケール調整値

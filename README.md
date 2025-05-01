@@ -1,16 +1,86 @@
 # DRSorter
 
-このスクリプトはDaVinci Resolve Scripting APIを使用し縦写真と横写真をそれぞれ別のタイムラインに振り分けます。
+## 目次
+1. [概要](#概要)
+2. [前提条件](#前提条件)
+3. [インストール手順](#インストール手順)
+4. [設定方法](#設定方法)
+5. [使用方法](#使用方法)
+6. [トラブルシューティング](#トラブルシューティング)
+7. [制限事項](#制限事項)
+8. [ログ出力](#ログ出力)
 
-[VerticalHorizontalSorter](https://github.com/a-tak/VerticalHorizontalSorter)の Python移植機能拡張版になります。
+## 概要
+このスクリプトはDaVinci Resolve Scripting APIを使用し、縦写真と横写真をそれぞれ別のタイムラインに振り分けます。
+[VerticalHorizontalSorter](https://github.com/a-tak/VerticalHorizontalSorter)のPython移植機能拡張版です。
 
-## インストール
+## 前提条件
+- DaVinci Resolve Studio版（スクリプティング機能は無料版では使用できません）
+- Python 3.6以上 64bit版
+- スクリプティング権限の設定
+  - DaVinci Resolveの環境設定 > 一般 > 外部スクリプティング > 「外部スクリプティングの使用」を有効化
 
-Pythonファイルを所定の場所に置いてください。
+## インストール手順
 
-置く場所はDaVinci Resolveの `ヘルプ` > `ドキュメンテーション` > `デベロッパー` から辿って、`Scripting`のフォルダの中の`README.txt`に記載されています。OSによって配置場所が違います。
+### 1. 依存パッケージのインストール
+必要なパッケージをインストールするには以下のコマンドを実行してください：
 
-## 設定
+```bash
+pip install pyyaml
+```
+
+または、プロジェクトに含まれるrequirements.txtを使用して：
+
+```bash
+pip install -r requirements.txt
+```
+
+### 2. Pythonのインストール
+1. [Python公式サイト](https://www.python.org/)から64bit版をダウンロード
+2. インストーラーを実行
+   - 「Add Python to PATH」にチェックを入れることを推奨
+   - 「Install for all users」を選択することを推奨
+
+### 2. 環境変数の設定
+スクリプトを外部から実行する場合は、以下の環境変数の設定が必要です。
+
+Windows:
+```cmd
+setx RESOLVE_SCRIPT_API "%PROGRAMDATA%\Blackmagic Design\DaVinci Resolve\Support\Developer\Scripting"
+setx RESOLVE_SCRIPT_LIB "C:\Program Files\Blackmagic Design\DaVinci Resolve\fusionscript.dll"
+setx PYTHONPATH "%PYTHONPATH%;%RESOLVE_SCRIPT_API%\Modules\"
+```
+
+Mac OS X:
+```bash
+export RESOLVE_SCRIPT_API="/Library/Application Support/Blackmagic Design/DaVinci Resolve/Developer/Scripting"
+export RESOLVE_SCRIPT_LIB="/Applications/DaVinci Resolve/DaVinci Resolve.app/Contents/Libraries/Fusion/fusionscript.so"
+export PYTHONPATH="$PYTHONPATH:$RESOLVE_SCRIPT_API/Modules/"
+```
+
+Linux:
+```bash
+export RESOLVE_SCRIPT_API="/opt/resolve/Developer/Scripting"
+export RESOLVE_SCRIPT_LIB="/opt/resolve/libs/Fusion/fusionscript.so"
+export PYTHONPATH="$PYTHONPATH:$RESOLVE_SCRIPT_API/Modules/"
+```
+
+### 3. スクリプトの配置
+スクリプトファイル（DRSorter.py）を以下のフォルダに配置してください：
+
+Windows:
+- 全ユーザー: `%PROGRAMDATA%\Blackmagic Design\DaVinci Resolve\Fusion\Scripts\Edit`
+- 個人ユーザー: `%APPDATA%\Roaming\Blackmagic Design\DaVinci Resolve\Support\Fusion\Scripts\Edit`
+
+Mac OS X:
+- 全ユーザー: `/Library/Application Support/Blackmagic Design/DaVinci Resolve/Fusion/Scripts/Edit`
+- 個人ユーザー: `/Users/<UserName>/Library/Application Support/Blackmagic Design/DaVinci Resolve/Fusion/Scripts/Edit`
+
+Linux:
+- 全ユーザー: `/opt/resolve/Fusion/Scripts/Edit`
+- 個人ユーザー: `$HOME/.local/share/DaVinciResolve/Fusion/Scripts/Edit`
+
+## 設定方法
 
 設定は`config.yaml`ファイルで管理します。サンプルの設定ファイル`config.sample.yaml`を`config.yaml`としてコピーし、必要に応じて設定を変更してください。
 
@@ -68,9 +138,34 @@ lenses:
     distortion: 0.13
 ```
 
-## 実行方法
+## 使用方法
 
-対象のビンを開いた状態でメニューの`ワークスペース` > `スクリプト`から実行してください。
+1. DaVinci Resolveを起動
+2. メディアページで対象の写真が含まれるビンを開く
+3. メニューの`ワークスペース` > `スクリプト` > `Edit` から`DRSorter`を選択
+4. スクリプトが実行され、縦写真と横写真が自動的に振り分けられます
+
+## トラブルシューティング
+
+### よくある問題と解決方法
+
+1. スクリプトが表示されない
+   - スクリプトの配置場所が正しいか確認
+   - DaVinci Resolveを再起動
+   - スクリプティング権限が有効になっているか確認
+
+2. 環境変数エラー
+   - 環境変数が正しく設定されているか確認
+   - システム環境変数の設定後、PCを再起動
+
+3. Pythonエラー
+   - Python 64bit版がインストールされているか確認
+   - PYTHONPATHが正しく設定されているか確認
+
+4. DRXファイルが適用されない
+   - ファイルパスが正しいか確認
+   - DRXファイルが存在するか確認
+   - パスに日本語が含まれていないか確認
 
 ## 制限事項
 

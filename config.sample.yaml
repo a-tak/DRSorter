@@ -10,13 +10,6 @@ default:
   power_grade: "D:/DaVinci Resolve/PowerGrade/Default.drx"  # デフォルトのPowerGrade
   distortion: 0  # デフォルトのレンズ補正値
 
-# アスペクト比別のportrait_scale設定
-aspect_ratios:
-  "4:3":
-    portrait_scale: 1.374  # 4:3の縦写真用スケール値
-  "3:2":
-    portrait_scale: 1.51   # 3:2の縦写真用スケール値
-
 # カメラ機種別のPowerGrade設定
 cameras:
   "DC-GH7":  # カメラモデル名（Camera TC Type）

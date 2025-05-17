@@ -280,16 +280,26 @@ def main():
                         jpeg_item = media_cache.jpeg_cache.get(base_name)
                         
                         if jpeg_item:
-                            resolution = jpeg_item.GetClipProperty("Resolution")
-                            width, height = map(int, resolution.split('x'))
-                            if width > height:
-                                scale = 1.0  # 横向きは常に1.0
-                            else:
-                                # JPEGの実際の縦横比から計算（縦写真の場合はheight/width）
-                                scale = height / width
+                            # JPEGの解像度を取得
+                            jpeg_res = jpeg_item.GetClipProperty("Resolution")
+                            jpeg_width, jpeg_height = map(int, jpeg_res.split('x'))
+                            
+                            # DNGの解像度を取得
+                            dng_res = media_pool_item.GetClipProperty("Resolution")
+                            dng_width, dng_height = map(int, dng_res.split('x'))
+                            
+                            if jpeg_width > jpeg_height:  # 横写真の場合
+                                # JPEGとDNGのアスペクト比を比較してスケールを計算
+                                scale_x = (jpeg_width / dng_width) * (dng_height / jpeg_height)
+                                scale_y = 1.0
+                                scale = max(scale_x, scale_y)
+                            else:  # 縦写真の場合
+                                # 既存のロジックを維持
+                                scale = jpeg_height / jpeg_width
                                 item.SetProperty("RotationAngle", config.get_rotation_angle())
                             
                             item.SetProperty("ZoomX", scale)
+                            item.SetProperty("ZoomY", scale)  # Y軸にも同じスケールを適用
                         else:
                             logging.warning(f"対応するJPEGファイルが見つかりません: {base_name}")
                         

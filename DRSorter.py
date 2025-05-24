@@ -3,6 +3,7 @@
 
 import logging
 import os
+import time # timeモジュールをインポート
 from datetime import datetime
 from typing import Optional, Dict, Any
 
@@ -166,13 +167,43 @@ class MediaItemCache:
         metadata = self.get_metadata(base_name)
         return dng_item, metadata
 
-def set_timeline_resolution(timeline, width, height):
-    """タイムラインの解像度を設定する"""
+def set_timeline_resolution(project, timeline, width, height): # project を引数に追加
+    """タイムラインの解像度とカラー設定を設定する"""
+    # タイムライン解像度設定
     timeline.SetSetting("useCustomSettings", "1")
     timeline.SetSetting("timelineResolutionWidth", str(width))
     timeline.SetSetting("timelineResolutionHeight", str(height))
     timeline.SetSetting("timelineOutputResolutionWidth", str(width))
     timeline.SetSetting("timelineOutputResolutionHeight", str(height))
+
+    # プロジェクトからタイムラインにコピーするカラー設定キーのリスト
+    timeline.SetSetting("isAutoColorManage", "0")
+    
+    color_settings_to_copy = [
+        "colorScienceMode",
+        "rcmPresetMode",
+        "colorSpaceOutput"
+    ]
+
+    logging.info(f"タイムライン '{timeline.GetName()}' にプロジェクトのカラー設定を適用しています...")
+    all_color_settings_applied = True
+    for setting_name in color_settings_to_copy:
+        project_setting_value = project.GetSetting(setting_name)
+        if project_setting_value is not None:
+            logging.info(f"  プロジェクト設定 '{setting_name}': {project_setting_value}")
+            if timeline.SetSetting(setting_name, project_setting_value):
+                logging.info(f"    -> タイムライン設定 '{setting_name}' に適用しました。")
+            else:
+                logging.error(f"    -> エラー: タイムライン設定 '{setting_name}' の適用に失敗しました。")
+                all_color_settings_applied = False
+        else:
+            logging.warning(f"  警告: プロジェクト設定 '{setting_name}' を取得できませんでした。スキップします。")
+            # all_color_settings_applied = False # 取得できない場合はスキップ
+
+    if all_color_settings_applied:
+        logging.info(f"タイムライン '{timeline.GetName()}' のカラー設定が正常に適用されました。")
+    else:
+        logging.warning(f"タイムライン '{timeline.GetName()}' の一部カラー設定の適用に失敗またはスキップされました。")
 
 def main():
     try:
@@ -240,7 +271,7 @@ def main():
                 raise Exception(f"タイムライン作成に失敗: {width}x{height}")
             
             # タイムラインの解像度設定
-            set_timeline_resolution(timeline, width, height)
+            set_timeline_resolution(project, timeline, width, height) # project を引数に追加
             
             # クリップ名でソート
             items.sort(key=lambda x: x.GetClipProperty("Clip Name"))

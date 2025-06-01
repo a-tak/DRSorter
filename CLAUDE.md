@@ -2,6 +2,24 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
+## Pull Request Settings
+
+### 言語設定
+- **デフォルト言語**: 日本語 (ja)
+- **プルリクエストタイトル**: 日本語で作成
+- **プルリクエスト説明文**: 日本語で作成
+- **コミットメッセージ**: 日本語で作成
+- **レビューコメント**: 日本語で投稿
+
+### PR作成ガイドライン
+```yaml
+pull_requests:
+  language: "ja"
+  title_format: "日本語タイトル形式"
+  body_format: "日本語説明文形式"
+  commit_message_format: "日本語コミットメッセージ形式"
+```
+
 ## Overview
 
 DRSorterは、DaVinci ResolveのScripting APIを使用して、縦写真と横写真を解像度別に自動的にタイムラインに振り分けるPythonスクリプトです。写真データ（JPEG）のメタデータを元に、対応するRAWファイル（DNG）にカメラ別PowerGradeとレンズ別歪み補正を適用します。

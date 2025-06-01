@@ -14,29 +14,6 @@
 このスクリプトはDaVinci Resolve Scripting APIを使用し、縦写真と横写真をそれぞれ別のタイムラインに振り分けます。
 [VerticalHorizontalSorter](https://github.com/a-tak/VerticalHorizontalSorter)のPython移植機能拡張版です。
 
-## カラーマネジメント設定
-
-タイムライン作成時のカラー設定を詳細に制御できます。設定ファイルで以下のような制御が可能です：
-
-```yaml
-color_management:
-  force_settings: false  # true: 設定ファイル値を強制、false: プロジェクト設定優先
-  color_science_mode: "davinciYRGBColorManagedv2"
-  rcm_preset_mode: "SDR"
-  color_space_output: "sRGB"  # 出力カラースペース
-```
-
-### 動作モード
-- **`force_settings: false`** (デフォルト): プロジェクト設定を継承し、失敗時にsRGBにフォールバック
-- **`force_settings: true`**: 設定ファイルで指定した値を強制適用
-
-### 確実にsRGBを設定したい場合
-```yaml
-color_management:
-  force_settings: true
-  color_space_output: "sRGB"
-```
-
 ## 前提条件
 - DaVinci Resolve Studio版（スクリプティング機能は無料版では使用できません）
 - Python 3.6以上 64bit版
@@ -111,6 +88,29 @@ Linux:
 
 - `still_type`: メディアプール内のタイプが画像のクリップを抽出するための名前です。日本語環境では"スチル"、英語環境では"Still"等に設定してください。
 - `rotation_angle`: 縦写真のDNGを回転する角度を指定します。デフォルトは90度です。
+
+### カラーマネジメント設定（color_management）
+
+タイムライン作成時のカラー設定を詳細に制御できます。設定ファイルで以下のような制御が可能です：
+
+```yaml
+color_management:
+  force_settings: false  # true: 設定ファイル値を強制、false: プロジェクト設定優先
+  color_science_mode: "davinciYRGBColorManagedv2"
+  rcm_preset_mode: "SDR"
+  color_space_output: "sRGB"  # 出力カラースペース
+```
+
+#### 動作モード
+- **`force_settings: false`** (デフォルト): プロジェクト設定を継承し、失敗時にsRGBにフォールバック
+- **`force_settings: true`**: 設定ファイルで指定した値を強制適用
+
+#### 確実にsRGBを設定したい場合
+```yaml
+color_management:
+  force_settings: true
+  color_space_output: "sRGB"
+```
 
 ### デフォルト設定（default）
 

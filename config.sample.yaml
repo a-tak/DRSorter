@@ -5,6 +5,23 @@ common:
   still_type: "スチル"  # メディアプールでの画像タイプ名。英語環境の場合は"Still"等に変更
   rotation_angle: 90.0  # 縦写真の回転角度
 
+# カラーマネジメント設定（オプション）
+color_management:
+  # 動作モード選択
+  force_settings: false  # true: 下記の設定値を強制使用、false: プロジェクト設定優先（失敗時sRGBフォールバック）
+  
+  # === force_settings: true 時に使用される固定値 ===
+  color_science_mode: "davinciYRGBColorManagedv2"  # カラーサイエンスモード
+  rcm_preset_mode: "SDR"  # RCMプリセットモード  
+  color_space_output: "sRGB"  # 出力カラースペース
+  # color_space_input: "Rec.709 (Scene)"  # 入力カラースペース（コメントアウト = 使用しない）
+  # color_space_input_gamma: "Rec.709"  # 入力ガンマ（コメントアウト = 使用しない）
+  
+  # === 現在の動作（force_settings: false）===
+  # 1. プロジェクト設定を取得・適用を試行
+  # 2. 失敗時は sRGB/sRGB (D65)/sRGB D65 のいずれかでフォールバック
+  # 3. 上記の color_space_output 等の値は無視される
+
 # デフォルト設定
 default:
   power_grade: "D:/DaVinci Resolve/PowerGrade/Default.drx"  # デフォルトのPowerGrade

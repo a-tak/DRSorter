@@ -3,6 +3,7 @@
 
 import logging
 import os
+import time # timeモジュールをインポート
 from datetime import datetime
 from typing import Optional, Dict, Any
 
@@ -73,6 +74,25 @@ class Config:
     def get_rotation_angle(self) -> float:
         """共通設定から回転角度を取得"""
         return self.config.get('common', {}).get('rotation_angle', 90.0)
+    
+    def should_force_color_settings(self) -> bool:
+        """カラー設定を強制するかどうかを取得"""
+        return self.config.get('color_management', {}).get('force_settings', False)
+    
+    def get_color_setting(self, setting_name: str) -> Optional[str]:
+        """カラー設定の値を取得"""
+        color_mgmt = self.config.get('color_management', {})
+        setting_map = {
+            'colorScienceMode': 'color_science_mode',
+            'rcmPresetMode': 'rcm_preset_mode', 
+            'colorSpaceOutput': 'color_space_output',
+            'colorSpaceInput': 'color_space_input',
+            'colorSpaceInputGamma': 'color_space_input_gamma'
+        }
+        config_key = setting_map.get(setting_name)
+        if config_key:
+            return color_mgmt.get(config_key)
+        return None
 
 def get_resolve():
     """DaVinci Resolveのインスタンスを取得"""
@@ -166,13 +186,85 @@ class MediaItemCache:
         metadata = self.get_metadata(base_name)
         return dng_item, metadata
 
-def set_timeline_resolution(timeline, width, height):
-    """タイムラインの解像度を設定する"""
+def set_timeline_resolution(project, timeline, width, height, config): # config を引数に追加
+    """タイムラインの解像度とカラー設定を設定する"""
+    # タイムライン解像度設定
     timeline.SetSetting("useCustomSettings", "1")
     timeline.SetSetting("timelineResolutionWidth", str(width))
     timeline.SetSetting("timelineResolutionHeight", str(height))
     timeline.SetSetting("timelineOutputResolutionWidth", str(width))
     timeline.SetSetting("timelineOutputResolutionHeight", str(height))
+
+    # カラーマネジメント設定の適用
+    timeline.SetSetting("isAutoColorManage", "0")
+    
+    color_settings_to_copy = [
+        "colorScienceMode",
+        "rcmPresetMode",
+        "colorSpaceOutput"
+    ]
+
+    logging.info(f"タイムライン '{timeline.GetName()}' にカラー設定を適用しています...")
+    
+    if config.should_force_color_settings():
+        # 設定ファイルの値を強制使用
+        logging.info("設定ファイルのカラー設定を強制適用します...")
+        all_color_settings_applied = True
+        for setting_name in color_settings_to_copy:
+            config_value = config.get_color_setting(setting_name)
+            if config_value is not None:
+                logging.info(f"  設定ファイル '{setting_name}': {config_value}")
+                if timeline.SetSetting(setting_name, config_value):
+                    logging.info(f"    -> タイムライン設定 '{setting_name}' に適用しました。")
+                else:
+                    logging.error(f"    -> エラー: タイムライン設定 '{setting_name}' の適用に失敗しました。")
+                    all_color_settings_applied = False
+            else:
+                logging.warning(f"  警告: 設定ファイル '{setting_name}' が設定されていません。スキップします。")
+    else:
+        # プロジェクト設定を優先使用
+        logging.info("プロジェクトのカラー設定を適用します...")
+        all_color_settings_applied = True
+        for setting_name in color_settings_to_copy:
+            project_setting_value = project.GetSetting(setting_name)
+            if project_setting_value is not None:
+                logging.info(f"  プロジェクト設定 '{setting_name}': {project_setting_value}")
+                if timeline.SetSetting(setting_name, project_setting_value):
+                    logging.info(f"    -> タイムライン設定 '{setting_name}' に適用しました。")
+                else:
+                    logging.error(f"    -> エラー: タイムライン設定 '{setting_name}' の適用に失敗しました。")
+                    all_color_settings_applied = False
+            else:
+                logging.warning(f"  警告: プロジェクト設定 '{setting_name}' を取得できませんでした。スキップします。")
+
+    # カラー設定適用後に自動カラーマネジメントを無効化
+    if timeline.SetSetting("isAutoColorManage", "0"):
+        logging.info("自動カラーマネジメントを無効化しました。")
+    else:
+        logging.warning("自動カラーマネジメントの無効化に失敗しました。")
+    
+    # フォールバック: sRGB強制設定
+    output_color_space = config.get_color_setting("colorSpaceOutput") if config.should_force_color_settings() else None
+    if output_color_space:
+        # 設定ファイルで指定された値を試行
+        if timeline.SetSetting("colorSpaceOutput", output_color_space):
+            logging.info(f"出力カラースペースを設定ファイル値'{output_color_space}'に設定しました。")
+        else:
+            logging.warning(f"設定ファイル値'{output_color_space}'の設定に失敗しました。")
+    else:
+        # デフォルトのsRGBバリエーションを試行
+        srgb_variants = ["sRGB", "sRGB (D65)", "sRGB D65"]
+        for variant in srgb_variants:
+            if timeline.SetSetting("colorSpaceOutput", variant):
+                logging.info(f"出力カラースペースを強制的に'{variant}'に設定しました。")
+                break
+        else:
+            logging.warning("sRGBの設定に失敗しました。すべての候補で試行しましたが適用されませんでした。")
+
+    if all_color_settings_applied:
+        logging.info(f"タイムライン '{timeline.GetName()}' のカラー設定が正常に適用されました。")
+    else:
+        logging.warning(f"タイムライン '{timeline.GetName()}' の一部カラー設定の適用に失敗またはスキップされました。")
 
 def main():
     try:
@@ -240,7 +332,7 @@ def main():
                 raise Exception(f"タイムライン作成に失敗: {width}x{height}")
             
             # タイムラインの解像度設定
-            set_timeline_resolution(timeline, width, height)
+            set_timeline_resolution(project, timeline, width, height, config) # config を引数に追加
             
             # クリップ名でソート
             items.sort(key=lambda x: x.GetClipProperty("Clip Name"))

@@ -14,10 +14,28 @@
 このスクリプトはDaVinci Resolve Scripting APIを使用し、縦写真と横写真をそれぞれ別のタイムラインに振り分けます。
 [VerticalHorizontalSorter](https://github.com/a-tak/VerticalHorizontalSorter)のPython移植機能拡張版です。
 
-## 既知のバグ
+## カラーマネジメント設定
 
-作成されるタイムラインのカラーマネジメント設定がプロジェクトの設定と異なる設定になる問題を確認しています。
-作成後のタイムラインで適切なタイムライン(通常はsRGBがよいかと思います)に変更してください。
+タイムライン作成時のカラー設定を詳細に制御できます。設定ファイルで以下のような制御が可能です：
+
+```yaml
+color_management:
+  force_settings: false  # true: 設定ファイル値を強制、false: プロジェクト設定優先
+  color_science_mode: "davinciYRGBColorManagedv2"
+  rcm_preset_mode: "SDR"
+  color_space_output: "sRGB"  # 出力カラースペース
+```
+
+### 動作モード
+- **`force_settings: false`** (デフォルト): プロジェクト設定を継承し、失敗時にsRGBにフォールバック
+- **`force_settings: true`**: 設定ファイルで指定した値を強制適用
+
+### 確実にsRGBを設定したい場合
+```yaml
+color_management:
+  force_settings: true
+  color_space_output: "sRGB"
+```
 
 ## 前提条件
 - DaVinci Resolve Studio版（スクリプティング機能は無料版では使用できません）

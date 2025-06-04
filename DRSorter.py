@@ -75,6 +75,14 @@ class Config:
         """共通設定から回転角度を取得"""
         return self.config.get('common', {}).get('rotation_angle', 90.0)
     
+    def is_video_processing_enabled(self) -> bool:
+        """動画処理が有効かどうかを取得"""
+        return self.config.get('video', {}).get('enable_processing', True)
+    
+    def get_supported_video_formats(self) -> list:
+        """対応動画フォーマットを取得"""
+        return self.config.get('video', {}).get('supported_formats', ["MOV", "MP4", "MXF"])
+    
     def should_force_color_settings(self) -> bool:
         """カラー設定を強制するかどうかを取得"""
         return self.config.get('color_management', {}).get('force_settings', False)
@@ -135,6 +143,7 @@ class MediaItemCache:
         self.metadata_cache = {}  # ベース名をキーとしたメタデータのキャッシュ
         self.dng_cache = {}      # ベース名をキーとしたDNGアイテムのキャッシュ
         self.jpeg_cache = {}     # ベース名をキーとしたJPEGアイテムのキャッシュ
+        self.mov_cache = {}      # ベース名をキーとしたMOVアイテムのキャッシュ
         self._build_cache(media_items)
 
     def _build_cache(self, media_items):
@@ -174,6 +183,36 @@ class MediaItemCache:
             
             elif format_type.lower() == "dng":
                 self.dng_cache[base_name] = item
+            
+            elif format_type.upper() in ["MOV", "MP4", "MXF"]:  # 複数の動画フォーマットに対応
+                self.mov_cache[base_name] = item
+                # 動画ファイルからメタデータを取得してキャッシュ
+                try:
+                    camera_type = item.GetMetadata("Camera TC Type")
+                    lens_type = item.GetMetadata("Lens Type")
+                    
+                    # メタデータが取得できない場合はデフォルト値を使用
+                    if not camera_type:
+                        camera_type = "default"
+                        logging.info(f"Camera TC Typeが取得できないためデフォルト使用: {base_name}")
+                    if not lens_type:
+                        lens_type = "default"
+                        logging.info(f"Lens Typeが取得できないためデフォルト使用: {base_name}")
+                        
+                    self.metadata_cache[base_name] = {
+                        "camera_type": camera_type,
+                        "lens_type": lens_type
+                    }
+                    logging.info(f"MOVメタデータをキャッシュ: {base_name} - Camera: {camera_type}, Lens: {lens_type}")
+                    
+                except Exception as e:
+                    logging.error(f"MOVメタデータの取得に失敗: {base_name}, エラー: {str(e)}")
+                    # エラー時もデフォルト値を設定
+                    self.metadata_cache[base_name] = {
+                        "camera_type": "default",
+                        "lens_type": "default"
+                    }
+                    logging.info(f"MOVファイルにデフォルトメタデータを設定: {base_name}")
 
     def get_metadata(self, base_name: str) -> Dict[str, Optional[str]]:
         """キャッシュからメタデータを取得"""
@@ -298,41 +337,56 @@ def main():
         # メディアアイテムのキャッシュを初期化
         media_cache = MediaItemCache(media_items)
         
-        # 解像度でグループ化
-        resolution_groups = {}
+        # 解像度でグループ化（写真と動画を分離）
+        photo_resolution_groups = {}
+        video_resolution_groups = {}
+        
         for media_item in media_items:
-            if media_item.GetClipProperty("Type") == config.get_still_type():
-                format_type = media_item.GetClipProperty("Format")
-                if format_type == "JPEG":
-                    resolution = media_item.GetClipProperty("Resolution")
-                    try:
-                        width, height = map(int, resolution.split('x'))
-                        if resolution not in resolution_groups:
-                            resolution_groups[resolution] = []
-                        resolution_groups[resolution].append(media_item)
+            format_type = media_item.GetClipProperty("Format")
+            resolution = media_item.GetClipProperty("Resolution")
+            
+            try:
+                width, height = map(int, resolution.split('x'))
+                
+                # 写真の処理（従来のロジック）
+                if media_item.GetClipProperty("Type") == config.get_still_type() and format_type == "JPEG":
+                    if resolution not in photo_resolution_groups:
+                        photo_resolution_groups[resolution] = []
+                    photo_resolution_groups[resolution].append(media_item)
+                    
+                    # キャッシュから対応するDNGファイルを取得
+                    dng_item, _ = media_cache.get_dng_and_metadata(media_item)
+                    if dng_item and dng_item not in photo_resolution_groups[resolution]:
+                        photo_resolution_groups[resolution].append(dng_item)
+                
+                # 動画の処理（新規追加）
+                elif format_type.upper() in [fmt.upper() for fmt in config.get_supported_video_formats()]:
+                    if config.is_video_processing_enabled():
+                        if resolution not in video_resolution_groups:
+                            video_resolution_groups[resolution] = []
+                        video_resolution_groups[resolution].append(media_item)
+                    else:
+                        logging.info(f"動画処理が無効のためスキップ: {media_item.GetClipProperty('Clip Name')}")
                         
-                        # キャッシュから対応するDNGファイルを取得
-                        dng_item, _ = media_cache.get_dng_and_metadata(media_item)
-                        if dng_item and dng_item not in resolution_groups[resolution]:
-                            resolution_groups[resolution].append(dng_item)
-                                    
-                    except ValueError as e:
-                        logging.error(f"解像度の解析に失敗: {resolution}, エラー: {str(e)}")
+            except ValueError as e:
+                logging.error(f"解像度の解析に失敗: {resolution}, エラー: {str(e)}")
 
         # 解像度ごとにタイムライン作成
         current_time = datetime.now().strftime("%Y-%m-%d %H-%M-%S")
         last_timeline = None
-        for resolution, items in resolution_groups.items():
+        
+        # 写真用タイムライン作成
+        for resolution, items in photo_resolution_groups.items():
             width, height = map(int, resolution.split('x'))
             
             # タイムライン作成
             timeline = media_pool.CreateEmptyTimeline(
                 f"#{width}x{height} Photos {current_time}")
             if not timeline:
-                raise Exception(f"タイムライン作成に失敗: {width}x{height}")
+                raise Exception(f"写真タイムライン作成に失敗: {width}x{height}")
             
             # タイムラインの解像度設定
-            set_timeline_resolution(project, timeline, width, height, config) # config を引数に追加
+            set_timeline_resolution(project, timeline, width, height, config)
             
             # クリップ名でソート
             items.sort(key=lambda x: x.GetClipProperty("Clip Name"))
@@ -346,7 +400,7 @@ def main():
                     media_pool.AppendToTimeline(item)
                     added_clip_names.append(clip_name)
             
-            # タイムラインアイテムの設定
+            # タイムラインアイテムの設定（写真専用処理）
             timeline_items = timeline.GetItemListInTrack("video", 1)
             if timeline_items:
                 for item in timeline_items:
@@ -399,6 +453,54 @@ def main():
                             apply_grade_from_drx_using_graph(item, power_grade_path, 0)
                         if distortion is not None:
                             item.SetProperty("Distortion", distortion)
+            
+            last_timeline = timeline
+        
+        # 動画用タイムライン作成
+        for resolution, items in video_resolution_groups.items():
+            width, height = map(int, resolution.split('x'))
+            
+            # タイムライン作成
+            timeline = media_pool.CreateEmptyTimeline(
+                f"#{width}x{height} Videos {current_time}")
+            if not timeline:
+                raise Exception(f"動画タイムライン作成に失敗: {width}x{height}")
+            
+            # タイムラインの解像度設定
+            set_timeline_resolution(project, timeline, width, height, config)
+            
+            # クリップ名でソート
+            items.sort(key=lambda x: x.GetClipProperty("Clip Name"))
+            
+            # クリップを追加
+            project.SetCurrentTimeline(timeline)
+            for item in items:
+                media_pool.AppendToTimeline(item)
+            
+            # タイムラインアイテムの設定（動画専用処理）
+            timeline_items = timeline.GetItemListInTrack("video", 1)
+            if timeline_items:
+                for item in timeline_items:
+                    media_pool_item = item.GetMediaPoolItem()
+                    base_name = os.path.splitext(media_pool_item.GetClipProperty("Clip Name"))[0]
+                    metadata = media_cache.get_metadata(base_name)
+                    clip_name = media_pool_item.GetClipProperty("Clip Name")
+                    logging.info(f"MOVファイル {clip_name} のメタデータ処理開始")
+                    
+                    # 動画にはPowerGradeのみ適用（回転・スケール処理なし）
+                    power_grade_path = config.get_power_grade_path(metadata["camera_type"])
+                    if power_grade_path:
+                        if os.path.exists(power_grade_path):
+                            logging.info(f"PowerGrade適用開始: {clip_name} -> {power_grade_path}")
+                            if not apply_grade_from_drx_using_graph(item, power_grade_path, 0):
+                                logging.error(f"PowerGrade適用失敗: {clip_name}")
+                        else:
+                            logging.error(f"PowerGradeファイルが存在しません: {power_grade_path}")
+                    
+                    # レンズ歪み補正も適用
+                    distortion = config.get_distortion(metadata["lens_type"])
+                    if distortion is not None:
+                        item.SetProperty("Distortion", distortion)
             
             last_timeline = timeline
 

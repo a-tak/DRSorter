@@ -4,6 +4,11 @@
 common:
   still_type: "スチル"  # メディアプールでの画像タイプ名。英語環境の場合は"Still"等に変更
   rotation_angle: 90.0  # 縦写真の回転角度
+  
+# 動画処理設定
+video:
+  enable_processing: true  # 動画ファイル処理の有効/無効
+  supported_formats: ["MOV", "MP4", "MXF"]  # 対応動画フォーマット（将来拡張用）
 
 # カラーマネジメント設定（オプション）
 color_management:

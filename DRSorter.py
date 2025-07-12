@@ -385,10 +385,14 @@ def main():
                                 scale_x = (jpeg_width / dng_width) * (dng_height / jpeg_height)
                                 scale_y = 1.0
                                 scale = max(scale_x, scale_y)
-                            else:  # 縦写真の場合
+                            elif jpeg_width < jpeg_height:  # 縦写真の場合
                                 # 既存のロジックを維持
                                 scale = jpeg_height / jpeg_width
                                 item.SetProperty("RotationAngle", config.get_rotation_angle())
+                            else:  # 正方形（1:1アスペクト比）の場合
+                                # 回転処理なし、スケール調整のみ
+                                # 正方形の場合はDNGをJPEGの解像度に合わせる
+                                scale = dng_width / jpeg_width
                             
                             item.SetProperty("ZoomX", scale)
                             item.SetProperty("ZoomY", scale)  # Y軸にも同じスケールを適用

@@ -381,10 +381,8 @@ def main():
                             dng_width, dng_height = map(int, dng_res.split('x'))
                             
                             if jpeg_width > jpeg_height:  # 横写真の場合
-                                # JPEGとDNGのアスペクト比を比較してスケールを計算
-                                scale_x = (jpeg_width / dng_width) * (dng_height / jpeg_height)
-                                scale_y = 1.0
-                                scale = max(scale_x, scale_y)
+                                # 縦写真と同じ統一計算式を使用
+                                scale = dng_width / jpeg_width
                             elif jpeg_width < jpeg_height:  # 縦写真の場合
                                 # DNGの幅をJPEGの幅で割る統一計算式
                                 scale = dng_width / jpeg_width

@@ -386,8 +386,8 @@ def main():
                                 scale_y = 1.0
                                 scale = max(scale_x, scale_y)
                             elif jpeg_width < jpeg_height:  # 縦写真の場合
-                                # 既存のロジックを維持
-                                scale = jpeg_height / jpeg_width
+                                # DNGの幅をJPEGの幅で割る統一計算式
+                                scale = dng_width / jpeg_width
                                 item.SetProperty("RotationAngle", config.get_rotation_angle())
                             else:  # 正方形（1:1アスペクト比）の場合
                                 # 回転処理なし、スケール調整のみ

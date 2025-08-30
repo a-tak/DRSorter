@@ -22,7 +22,22 @@
 
 ## インストール手順
 
-### 1. 依存パッケージのインストール
+### 1. Pythonのインストール
+1. [Python公式サイト](https://www.python.org/)から64bit版をダウンロード
+2. インストーラーを実行
+   - 「Add Python to PATH」にチェックを入れることを推奨
+   - 「Install for all users」を選択することを推奨
+
+#### WindowsでPythonがDaVinci Resolveで認識されない場合
+
+プロジェクトを開いて、 `ワークスペース` > `コンソール` で開いた画面の上にある `Py3`を押したときに`Python 3 was not foud` と表示される場合は、DaVinci ResolveにPythontが認識されていません。
+
+- Pythonインストール後PC再起動を推奨します。
+- 設定 → アプリ → アプリ実行エイリアスのPython x.xxがオンになっているとDaVinci ResolveがPythonを認識できない場合があります。オフにすることを推奨します。
+
+![alt text](image.png)
+
+### 2. 依存パッケージのインストール
 必要なパッケージをインストールするには以下のコマンドを実行してください：
 
 ```bash
@@ -34,12 +49,6 @@ pip install pyyaml
 ```bash
 pip install -r requirements.txt
 ```
-
-### 2. Pythonのインストール
-1. [Python公式サイト](https://www.python.org/)から64bit版をダウンロード
-2. インストーラーを実行
-   - 「Add Python to PATH」にチェックを入れることを推奨
-   - 「Install for all users」を選択することを推奨
 
 ### 2. 環境変数の設定
 スクリプトを外部から実行する場合は、以下の環境変数の設定が必要です。
@@ -66,15 +75,17 @@ export PYTHONPATH="$PYTHONPATH:$RESOLVE_SCRIPT_API/Modules/"
 ```
 
 ### 3. スクリプトの配置
-スクリプトファイル（DRSorter.py）を以下のフォルダに配置してください：
+スクリプトファイル（DRSorter.py）を全ユーザーか個人ユーザーのどちらかのフォルダに配置してください。通常は個人ユーザーのフォルダで問題ないと思います。
 
 Windows:
-- 全ユーザー: `%PROGRAMDATA%\Blackmagic Design\DaVinci Resolve\Fusion\Scripts\Edit`
-- 個人ユーザー: `%APPDATA%\Roaming\Blackmagic Design\DaVinci Resolve\Support\Fusion\Scripts\Edit`
+- `C:\Users\(ユーザー名)\AppData\Roaming\Blackmagic Design\DaVinci Resolve\Support\Fusion\Scripts\Edit\DRSorter`
+
+下記をエクスプローラー上部の欄に貼り付けしてもよいです。
+- : `%APPDATA%\Blackmagic Design\DaVinci Resolve\Support\Fusion\Scripts\Edit`
 
 Mac OS X:
 - 全ユーザー: `/Library/Application Support/Blackmagic Design/DaVinci Resolve/Fusion/Scripts/Edit`
-- 個人ユーザー: `/Users/<UserName>/Library/Application Support/Blackmagic Design/DaVinci Resolve/Fusion/Scripts/Edit`
+- 個人ユーザー: `/Users/(ユーザー名)/Library/Application Support/Blackmagic Design/DaVinci Resolve/Fusion/Scripts/Edit`
 
 Linux:
 - 全ユーザー: `/opt/resolve/Fusion/Scripts/Edit`

@@ -41,3 +41,4 @@ luac.out
 
 config.yaml
 *.pyc
+.claude/settings.local.json
